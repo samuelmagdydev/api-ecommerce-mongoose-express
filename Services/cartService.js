@@ -1,10 +1,10 @@
 const asyncHandler = require("express-async-handler");
 // eslint-disable-next-line import/no-unresolved, node/no-missing-require
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/apiError");
 // eslint-disable-next-line import/no-unresolved, node/no-missing-require
-const Product = require("../models/ProductModel");
+const Product = require("../models/productModel");
 // eslint-disable-next-line import/no-unresolved, node/no-missing-require
-const Coupon = require("../models/CouponModel");
+const Coupon = require("../models/couponModel");
 const Cart = require("../models/CartModel");
 
 const calcTotalCartPrice = (cart) => {
