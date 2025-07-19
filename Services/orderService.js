@@ -5,7 +5,7 @@ const asyncHandler = require("express-async-handler");
 const factory = require("./handelrsFactory");
 const ApiError = require("../utils/apiError");
 // eslint-disable-next-line import/no-unresolved, node/no-missing-require
-const Cart = require("../models/cartModel");
+const Cart = require("../models/CartModel");
 const Product = require("../models/productModel");
 const Order = require("../models/orderModel");
 
