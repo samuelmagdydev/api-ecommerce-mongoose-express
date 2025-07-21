@@ -6,6 +6,7 @@ const factory = require("./handelrsFactory");
 const ApiError = require("../utils/apiError");
 // eslint-disable-next-line import/no-unresolved, node/no-missing-require
 const Cart = require("../models/CartModel");
+const User = require("../models/userModel");
 const Product = require("../models/productModel");
 const Order = require("../models/orderModel");
 
@@ -148,7 +149,7 @@ exports.getCheckOutSession = asyncHandler(async (req, res, next) => {
   const totalOrderPrice = cartPrice + taxPrice + shippingPrice;
 
   //3- Create checkout session
-   const session = await stripe.checkout.sessions.create({
+  const session = await stripe.checkout.sessions.create({
     line_items: [
       {
         price_data: {
@@ -175,10 +176,47 @@ exports.getCheckOutSession = asyncHandler(async (req, res, next) => {
   });
 });
 
+const createCardOrder = async (session) => {
+  const cartId = session.client_reference_id;
+  const shippingAddress = session.metadata;
+  const orderPrice = session.display_items[0].amount / 100;
 
-exports.webhookCheckout = asyncHandler(async(req,res,next)=>{
-  const sig = req.headers['stripe-signature'];
-  let event ;
+  const cart = await Cart.findById(cartId);
+  const user = await User.findOne({ email: session.customer_email });
+
+  // create order with Payment Type Card
+  const order = await Order.create({
+    user: user._id,
+    cartItems: cart.cartItems,
+    shippingAddress,
+    totalOrderPrice: orderPrice,
+    isPaid: true,
+    paidAt: Date.now(),
+    paymentMethod: "card",
+  });
+
+  //4- After creating order , decrease product quantity , increase product sold
+  if (order) {
+    const bulkOption = cart.cartItems.map((item) => ({
+      updateOne: {
+        filter: { _id: item.productId },
+        update: {
+          $inc: {
+            quantity: -item.quantity,
+            sold: +item.quantity,
+          },
+        },
+      },
+    }));
+    await Product.bulkWrite(bulkOption, {});
+    //5- clear cart depend on cartId
+    await Cart.findByIdAndDelete(cartId);
+  }
+};
+
+exports.webhookCheckout = asyncHandler(async (req, res, next) => {
+  const sig = req.headers["stripe-signature"];
+  let event;
   try {
     event = stripe.webhooks.constructEvent(
       req.body,
@@ -188,10 +226,10 @@ exports.webhookCheckout = asyncHandler(async(req,res,next)=>{
   } catch (error) {
     return res.status(400).send(`WebHook Error : ${error.message} `);
   }
-  if(event.type === "checkout.session.completed"){
-    console.log('Create Order Here....');
-    console.log(event.data.object.client_reference_id);
-    
-    
+  if (event.type === "checkout.session.completed") {
+    // create Order
+    createCardOrder(event.data.object);
   }
+
+  res.status(200).json({ received: true });
 });
