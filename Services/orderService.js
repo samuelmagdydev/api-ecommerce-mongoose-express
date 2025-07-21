@@ -176,5 +176,20 @@ exports.getCheckOutSession = asyncHandler(async (req, res, next) => {
 });
 
 
-
-//  @des Create Order from Stripe Checkout Session
+exports.webhookCheckout = asyncHandler(async(req,res,next)=>{
+  const sig = req.headers['stripe-signature'];
+  let event ;
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (error) {
+    return res.status(400).send(`WebHook Error : ${error.message} `);
+  }
+  if(event.type === "checkout.session.completed"){
+    console.log('Create Order Here....');
+    
+  }
+});
